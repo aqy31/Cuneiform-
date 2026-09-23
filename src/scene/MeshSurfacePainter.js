@@ -210,10 +210,16 @@ export class MeshSurfacePainter {
         this.reticle.position.addScaledVector(worldNormal, 0.012);
 
         if (this.isDrawing && hit.uv && this.cameraLocked) {
-          this.paintAtUV(hit.uv);
+          this.paintAtUV(hit.uv, hit.point);
         }
       } else {
         this.reticle.visible = false;
+        // حماية هامة: إذا خرج المؤشر عن حدود اللوح عند الزوايا والحواف أثناء السحب
+        // نقوم بقطع الاتصال فوراً حتى لا يرسم خطاً مستقيماً طويلاً عند عودة المؤشر للوح
+        if (this.isDrawing) {
+          this.prevUV = null;
+          this.prevPoint = null;
+        }
       }
     });
 
@@ -222,8 +228,9 @@ export class MeshSurfacePainter {
       const hit = getRaycastHit(e);
       if (hit && hit.uv) {
         this.isDrawing = true;
+        this.prevPoint = hit.point ? hit.point.clone() : null;
         this.saveStateToUndo();
-        this.startStrokeAtUV(hit.uv);
+        this.startStrokeAtUV(hit.uv, hit.point);
       }
     });
 
@@ -231,12 +238,19 @@ export class MeshSurfacePainter {
       if (this.isDrawing) {
         this.isDrawing = false;
         this.prevUV = null;
+        this.prevPoint = null;
         this.strokeStartUV = null;
       }
     };
 
     window.addEventListener('pointerup', stopDrawing);
-    dom.addEventListener('pointerleave', () => { this.reticle.visible = false; });
+    dom.addEventListener('pointerleave', () => {
+      this.reticle.visible = false;
+      if (this.isDrawing) {
+        this.prevUV = null;
+        this.prevPoint = null;
+      }
+    });
   }
 
   saveStateToUndo() {
@@ -259,8 +273,9 @@ export class MeshSurfacePainter {
     this.drawingTexture.needsUpdate = true;
   }
 
-  startStrokeAtUV(uv) {
+  startStrokeAtUV(uv, worldPoint) {
     this.prevUV = uv.clone();
+    this.prevPoint = worldPoint ? worldPoint.clone() : null;
     this.strokeStartUV = uv.clone();
 
     const px = uv.x * this.textureSize;
@@ -279,9 +294,10 @@ export class MeshSurfacePainter {
     }
   }
 
-  paintAtUV(uv) {
+  paintAtUV(uv, worldPoint) {
     if (!this.prevUV) {
       this.prevUV = uv.clone();
+      this.prevPoint = worldPoint ? worldPoint.clone() : null;
       return;
     }
 
@@ -290,8 +306,39 @@ export class MeshSurfacePainter {
     const x2 = uv.x * this.textureSize;
     const y2 = (1.0 - uv.y) * this.textureSize;
 
-    const dist = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-    if (dist < 1) return;
+    const uvDist = Math.hypot(x2 - x1, y2 - y1);
+    if (uvDist < 0.5) return;
+
+    // حماية قاطعة من قفزات الزوايا ودرزات الـ UV (Seam Discontinuity Protection)
+    // إذا كانت المسافة بين نقطتين متتاليتين في الـ UV كبيرة (أكبر من 75 بكسل)
+    // أو إذا كانت المسافة ثلاثية الأبعاد أكبر من 0.35 وحدة:
+    // فهذا يعني قفزة عبر درزة UV أو انزلاق عند زاوية أو حافة اللوح
+    // في هذه الحالة نمنع وصل الخط تماماً ونبدأ مقطعاً جديداً بنقطة ناعمة
+    const maxAllowedUVDist = 75;
+    let isDiscontinuous = uvDist > maxAllowedUVDist;
+
+    if (worldPoint && this.prevPoint) {
+      const worldDist = worldPoint.distanceTo(this.prevPoint);
+      if (worldDist > 0.35) {
+        isDiscontinuous = true;
+      }
+    }
+
+    if (isDiscontinuous) {
+      this.prevUV = uv.clone();
+      this.prevPoint = worldPoint ? worldPoint.clone() : null;
+
+      if (this.tool === 'pen') {
+        this.ctx.save();
+        this.ctx.fillStyle = this.color;
+        this.ctx.beginPath();
+        this.ctx.arc(x2, y2, this.lineWidth, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
+        this.drawingTexture.needsUpdate = true;
+      }
+      return;
+    }
 
     this.ctx.save();
 
@@ -319,6 +366,7 @@ export class MeshSurfacePainter {
 
     this.ctx.restore();
     this.prevUV = uv.clone();
+    this.prevPoint = worldPoint ? worldPoint.clone() : null;
     this.drawingTexture.needsUpdate = true;
   }
 
@@ -346,7 +394,7 @@ export class MeshSurfacePainter {
       this.ctx.beginPath();
       this.ctx.moveTo(cx, cy);
       this.ctx.lineTo(cx - headW * 0.5, cy + headW * 0.8);
-      this.ctx.lineTo(0, len);
+      this.ctx.lineTo(cx, cy + len); // تصحيح النقطة السفلية لتكون متناسقة مع المركز
       this.ctx.lineTo(cx + headW * 0.5, cy + headW * 0.8);
       this.ctx.closePath();
       this.ctx.fill();
