@@ -18,67 +18,74 @@ export class ControlsPanel {
 
   initDOM() {
     const panelHTML = `
-      <!-- الشريط العلوي الرئيسي للهيدر -->
+      <!-- الشريط العلوي الرئيسي للهيدر (متجاوب للهاتف وسطح المكتب) -->
       <header class="app-header">
         <div class="brand-group">
           <div class="brand-logo-gem">𒀭</div>
           <div>
-            <h1 class="brand-title">مختبر الفحص المسماري ثلاثي الأبعاد</h1>
-            <span class="brand-tag">Cuneiform RTI & Epigraphy 3D Studio</span>
+            <h1 class="brand-title">مختبر الفحص المسماري 3D</h1>
+            <span class="brand-tag">Cuneiform RTI Studio</span>
           </div>
         </div>
 
         <div class="header-quick-actions">
-          <!-- زر لوحة الرسم وتتبع النقوش (Tracing Canvas) -->
-          <button id="open-drawing-btn" class="glow-button drawing-trigger-btn" title="فتح لوحة الرسم والشف الأثري وتصدير SVG/PNG">
+          <!-- زر لوحة الرسم وتتبع النقوش -->
+          <button id="open-drawing-btn" class="glow-button drawing-trigger-btn" title="فتح لوحة الرسم ثلاثية الأبعاد">
             <span class="btn-icon">✍️</span>
-            <span class="btn-text">رسم وتتبع النقوش</span>
+            <span class="btn-text">رسم 3D</span>
           </button>
 
           <!-- زر قراءة وترجمة النص -->
           <button id="open-reader-btn" class="action-btn highlight-gold">
             <span class="btn-icon">📜</span>
-            <span class="btn-text">قراءة وترجمة النص</span>
+            <span class="btn-text">النص المسماري</span>
           </button>
 
           <!-- زر معجم الرموز المسمارية -->
-          <button id="open-dictionary-btn" class="action-btn" title="معجم العلامات المسمارية وفق كتالوج Borger و Labat">
+          <button id="open-dictionary-btn" class="action-btn" title="معجم العلامات المسمارية">
             <span class="btn-icon">📖</span>
-            <span>معجم الرموز</span>
+            <span class="btn-text">معجم الرموز</span>
           </button>
 
           <!-- زر العدسة المكبرة التفاعلية -->
-          <button id="toggle-loupe-btn" class="action-btn" title="تفعيل العدسة المكبرة المجهرية">
+          <button id="toggle-loupe-btn" class="action-btn" title="العدسة المكبرة">
             <span class="btn-icon">🔍</span>
-            <span>العدسة المكبرة</span>
+            <span class="btn-text">العدسة</span>
           </button>
 
           <!-- زر قلب اللوح السريع -->
-          <button id="flip-tablet-btn" class="action-btn" title="قلب اللوح 180° لمعاينة الوجه الآخر">
+          <button id="flip-tablet-btn" class="action-btn" title="قلب اللوح 180°">
             <span class="btn-icon">🔃</span>
-            <span>قلب اللوح</span>
+            <span class="btn-text">قلب اللوح</span>
           </button>
 
           <!-- زر التقاط لقطة شاشة عالية الدقة -->
-          <button id="snapshot-btn" class="action-btn" title="التقاط صورة أثرية فائقة الدقة">
+          <button id="snapshot-btn" class="action-btn" title="التقاط صورة توثيقية">
             <span class="btn-icon">📸</span>
-            <span>لقطة توثيق</span>
+            <span class="btn-text">لقطة</span>
           </button>
 
           <!-- زر استيراد مجسم GLB خاص -->
-          <label class="action-btn file-input-label highlight-btn" title="استيراد مجسم ثلاثي الأبعاد بصيغة GLB أو GLTF">
+          <label class="action-btn file-input-label highlight-btn" title="استيراد مجسم GLB">
             <span class="btn-icon">📦</span>
-            <span>استيراد GLB</span>
+            <span class="btn-text">استيراد GLB</span>
             <input type="file" id="custom-model-input" accept=".glb,.gltf,.obj" style="display:none;" />
           </label>
         </div>
       </header>
 
+      <!-- زر عائم دائم لفتح/إغلاق لوحة الإضاءة والشيدر (لا يختفي أبداً حتى في الهاتف) -->
+      <button id="floating-sidebar-toggle-btn" class="floating-sidebar-btn" title="فتح لوحة أدوات الإضاءة والأشعة">
+        <span class="icon">🎛️</span>
+        <span class="txt">أدوات الفحص</span>
+      </button>
+
       <!-- اللوحة الجانبية العائمة: أدوات الإضاءة والشيدر والمواد -->
       <aside class="controls-sidebar">
+        <div class="sidebar-drag-handle-mobile"><span></span></div>
         <div class="sidebar-header">
           <h3>🎛️ أدوات الفحص والأشعة (RTI)</h3>
-          <button id="toggle-sidebar-btn" class="mini-toggle" title="تصغير/توسيع">◀</button>
+          <button id="toggle-sidebar-btn" class="mini-close" title="إغلاق اللوحة">✕</button>
         </div>
 
         <div class="sidebar-scrollable">
@@ -87,7 +94,7 @@ export class ControlsPanel {
             <h4>🔬 أدوات التوثيق والإبيغرافيا</h4>
             <div class="quick-epigraphy-grid">
               <button id="sidebar-draw-btn" class="epigraphy-btn primary">
-                <span>✍️ لوحة الرسم والشف المتجهي</span>
+                <span>✍️ لوحة الرسم ثلاثي الأبعاد على اللوح</span>
               </button>
               <button id="sidebar-macro-btn" class="epigraphy-btn">
                 <span id="macro-btn-label">🔎 تقريب فائق (Super Macro)</span>
@@ -98,23 +105,32 @@ export class ControlsPanel {
             </div>
           </section>
 
-          <!-- قسم إدارة مجسمات GLB -->
+          <!-- قسم اختيار وإدارة مجسمات 3D الأصلية -->
           <section class="control-card glb-card">
-            <h4>📦 مجسمات ثلاثية الأبعاد (GLB / 3D)</h4>
-            <p class="section-hint">يمكنك سحب وإفلات أي ملف <b>.glb</b> مباشرة على الشاشة أو اختياره من جهازك:</p>
-            <div class="glb-actions-row">
-              <label class="glb-upload-box" for="custom-model-input-sidebar">
-                <span class="upload-icon">📂</span>
-                <span>اختر ملف GLB من جهازك</span>
-                <input type="file" id="custom-model-input-sidebar" accept=".glb,.gltf,.obj" style="display:none;" />
-              </label>
-              <button id="export-glb-btn" class="export-glb-btn" title="تحميل وتصدير هذا اللوح كملف GLB جاهز">
-                💾 تصدير كملف GLB
+            <h4>🏺 المجسمات ثلاثية الأبعاد (3D Scans)</h4>
+            <div class="model-switcher-row">
+              <button id="switch-ur-tablet-btn" class="model-choice-btn active" title="لوح أور المسماري الأثري (الأصلي)">
+                <span class="icon">🏺</span>
+                <span class="name">لوح أور الأصلي</span>
+              </button>
+              <button id="switch-cylinder-btn" class="model-choice-btn" title="أسطوانة نبوخذ نصر المسمارية">
+                <span class="icon">📜</span>
+                <span class="name">أسطوانة نبوخذ نصر</span>
               </button>
             </div>
             <div id="model-status-indicator" class="model-status">
               <span>المجسم الحالي:</span>
-              <strong id="current-model-name">لوح مسماري إجرائي فائق الدقة</strong>
+              <strong id="current-model-name">لوح أور المسماري الأثري (أصلي)</strong>
+            </div>
+            <div class="glb-actions-row">
+              <label class="glb-upload-box" for="custom-model-input-sidebar">
+                <span class="upload-icon">📂</span>
+                <span>استيراد ملف GLB آخر من جهازك</span>
+                <input type="file" id="custom-model-input-sidebar" accept=".glb,.gltf,.obj" style="display:none;" />
+              </label>
+              <button id="export-glb-btn" class="export-glb-btn" title="تحميل وتصدير هذا المجسم كملف GLB">
+                💾 تصدير GLB
+              </button>
             </div>
           </section>
 
@@ -199,20 +215,7 @@ export class ControlsPanel {
             </div>
           </section>
 
-          <!-- 4. مادة ونوع الطين الأثري -->
-          <section class="control-card">
-            <h4>خامة ونوع اللوح الأثري</h4>
-            <div class="materials-list">
-              ${clayMaterials.map((mat, idx) => `
-                <button class="material-chip ${idx === 0 ? 'active' : ''}" data-mat-id="${mat.id}">
-                  <span class="color-dot" style="background:${mat.color}; border: 1px solid ${mat.specularTint || '#fff'}"></span>
-                  <span>${mat.name}</span>
-                </button>
-              `).join('')}
-            </div>
-          </section>
-
-          <!-- 5. اتجاهات وتقليب اللوح -->
+          <!-- 4. اتجاهات وتقليب اللوح -->
           <section class="control-card">
             <h4>تقليب اللوح ثلاثي الأبعاد</h4>
             <div class="flip-buttons-row">
@@ -223,7 +226,7 @@ export class ControlsPanel {
             </div>
           </section>
 
-          <!-- 6. خيارات العرض المساعدة -->
+          <!-- 5. خيارات العرض المساعدة -->
           <section class="control-card toggles-card">
             <label class="toggle-switch-row">
               <span>إظهار مصدر ومسار الضوء في المشهد</span>
@@ -237,23 +240,140 @@ export class ControlsPanel {
         </div>
       </aside>
 
-      <!-- الشريط السفلي لمؤشرات التحكم والتوجيهات السريعة -->
-      <div class="bottom-floating-bar">
+      <!-- الشريط السفلي لسطح المكتب -->
+      <div class="bottom-floating-bar desktop-only">
         <div class="interaction-hint">
-          <span>🖱️ اسحب للتدوير الحر • زر الفأرة الأيمن للتحريك • عجلة الفأرة للتكبير المجهري</span>
+          <span>🖱️ اسحب للتدوير الحر • زر الفأرة الأيمن للتحريك • عجلة الفأرة للتكبير</span>
         </div>
         <button id="macro-bottom-btn" class="pill-btn highlight">🔍 تقريب فائق (Super Macro)</button>
-        <button id="reset-cam-btn" class="pill-btn">🎯 إعادة ضبط المشهد</button>
+        <button id="reset-cam-btn" class="pill-btn">🎯 ضبط المشهد</button>
       </div>
+
+      <!-- شريط التنقل السفلي المريح المخصص للهاتف المحمول (Mobile Touch Navigation) -->
+      <nav class="mobile-nav-bar">
+        <button id="mob-sidebar-btn" class="mob-btn active">
+          <span class="icon">🎛️</span>
+          <span class="lbl">الإضاءة</span>
+        </button>
+        <button id="mob-drawing-btn" class="mob-btn">
+          <span class="icon">✍️</span>
+          <span class="lbl">رسم 3D</span>
+        </button>
+        <button id="mob-reader-btn" class="mob-btn">
+          <span class="icon">📜</span>
+          <span class="lbl">النصوص</span>
+        </button>
+        <button id="mob-dict-btn" class="mob-btn">
+          <span class="icon">📖</span>
+          <span class="lbl">المعجم</span>
+        </button>
+        <button id="mob-flip-btn" class="mob-btn">
+          <span class="icon">🔃</span>
+          <span class="lbl">قلب</span>
+        </button>
+      </nav>
     `;
 
     document.getElementById('app').insertAdjacentHTML('beforeend', panelHTML);
   }
 
   bindEvents() {
+    const sidebar = document.querySelector('.controls-sidebar');
+    const floatingBtn = document.getElementById('floating-sidebar-toggle-btn');
+    const closeSidebarBtn = document.getElementById('toggle-sidebar-btn');
+
+    // فتح وإغلاق الشريط الجانبي من الزر العائم الدائم أو شريط التنقل
+    const toggleSidebar = (forceState) => {
+      if (forceState !== undefined) {
+        if (forceState) sidebar.classList.remove('collapsed');
+        else sidebar.classList.add('collapsed');
+      } else {
+        sidebar.classList.toggle('collapsed');
+      }
+      const isClosed = sidebar.classList.contains('collapsed');
+      floatingBtn.style.display = isClosed ? 'flex' : 'none';
+      const mobSidebarBtn = document.getElementById('mob-sidebar-btn');
+      if (mobSidebarBtn) {
+        if (isClosed) mobSidebarBtn.classList.remove('active');
+        else mobSidebarBtn.classList.add('active');
+      }
+    };
+
+    floatingBtn.addEventListener('click', () => toggleSidebar(true));
+    closeSidebarBtn.addEventListener('click', () => toggleSidebar(false));
+
+    // ربط شريط التنقل بالهاتف المحمول للفتح والإغلاق التبادلي السلس
+    document.getElementById('mob-sidebar-btn').addEventListener('click', () => {
+      const isClosed = sidebar.classList.contains('collapsed');
+      if (isClosed) {
+        if (this.drawingToolbar.isOpen) this.drawingToolbar.close();
+        toggleSidebar(true);
+      } else {
+        toggleSidebar(false);
+      }
+    });
+
+    document.getElementById('mob-drawing-btn').addEventListener('click', () => {
+      if (this.drawingToolbar.isOpen) {
+        this.drawingToolbar.close();
+      } else {
+        toggleSidebar(false);
+        this.drawingToolbar.open();
+      }
+    });
+
+    document.getElementById('mob-reader-btn').addEventListener('click', () => {
+      const isHidden = this.readerModal.backdrop.classList.contains('hidden');
+      if (isHidden) {
+        toggleSidebar(false);
+        if (this.drawingToolbar.isOpen) this.drawingToolbar.close();
+        this.readerModal.open();
+      } else {
+        this.readerModal.close();
+      }
+    });
+
+    document.getElementById('mob-dict-btn').addEventListener('click', () => {
+      const isHidden = this.signDictionaryModal.backdrop.classList.contains('hidden');
+      if (isHidden) {
+        toggleSidebar(false);
+        if (this.drawingToolbar.isOpen) this.drawingToolbar.close();
+        this.signDictionaryModal.open();
+      } else {
+        this.signDictionaryModal.close();
+      }
+    });
+
+    document.getElementById('mob-flip-btn').addEventListener('click', () => {
+      this.viewer.flipTabletTo('toggle');
+    });
+
+    // أزرار تبديل المجسمات الأثرية الأصلية
+    const urBtn = document.getElementById('switch-ur-tablet-btn');
+    const cylBtn = document.getElementById('switch-cylinder-btn');
+    if (urBtn) {
+      urBtn.addEventListener('click', () => {
+        urBtn.classList.add('active');
+        if (cylBtn) cylBtn.classList.remove('active');
+        this.viewer.loadAuthenticUrTablet();
+      });
+    }
+    if (cylBtn) {
+      cylBtn.addEventListener('click', () => {
+        cylBtn.classList.add('active');
+        if (urBtn) urBtn.classList.remove('active');
+        this.viewer.loadCylinderModel();
+      });
+    }
+
     // فتح لوحة الرسم والتتبع (Drawing Toolbar)
     const openDrawing = () => {
-      this.drawingToolbar.open();
+      if (this.drawingToolbar.isOpen) {
+        this.drawingToolbar.close();
+      } else {
+        toggleSidebar(false);
+        this.drawingToolbar.open();
+      }
     };
     document.getElementById('open-drawing-btn').addEventListener('click', openDrawing);
     document.getElementById('sidebar-draw-btn').addEventListener('click', openDrawing);
@@ -286,11 +406,12 @@ export class ControlsPanel {
       if (macroBtnLabel) macroBtnLabel.innerText = label;
 
       const bottomBtn = document.getElementById('macro-bottom-btn');
-      if (bottomBtn) bottomBtn.innerText = this.isMacroActive ? '🔍 خروج من الماكرو' : '🔍 تقريب فائق (Super Macro)';
+      if (bottomBtn) bottomBtn.innerText = this.isMacroActive ? '🔍 خروج من الماكرو' : '🔍 تقريب فائق';
     };
 
     document.getElementById('sidebar-macro-btn').addEventListener('click', toggleMacro);
-    document.getElementById('macro-bottom-btn').addEventListener('click', toggleMacro);
+    const bottomMacroBtn = document.getElementById('macro-bottom-btn');
+    if (bottomMacroBtn) bottomMacroBtn.addEventListener('click', toggleMacro);
 
     // تفعيل نمط الرسم الخطي (B/W Line-Art Mode)
     let isLineArt = false;
@@ -308,10 +429,13 @@ export class ControlsPanel {
     });
 
     // إعادة ضبط المشهد
-    document.getElementById('reset-cam-btn').addEventListener('click', () => {
-      this.isMacroActive = false;
-      this.viewer.resetCameraView();
-    });
+    const resetBtn = document.getElementById('reset-cam-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        this.isMacroActive = false;
+        this.viewer.resetCameraView();
+      });
+    }
 
     // التقاط صورة عالية الدقة
     document.getElementById('snapshot-btn').addEventListener('click', () => {
@@ -350,14 +474,6 @@ export class ControlsPanel {
         (error) => console.error('Error exporting GLB:', error),
         { binary: true }
       );
-    });
-
-    // طي الشريط الجانبي
-    const sidebar = document.querySelector('.controls-sidebar');
-    const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
-    toggleSidebarBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      toggleSidebarBtn.innerText = sidebar.classList.contains('collapsed') ? '▶' : '◀';
     });
 
     // القبة الافتراضية
@@ -456,19 +572,6 @@ export class ControlsPanel {
 
           this.updateSlidersFromLighting();
           this.updateDomeHandle(this.viewer.lighting.azimuth, this.viewer.lighting.elevation);
-        }
-      });
-    });
-
-    // خامات الطين
-    document.querySelectorAll('.material-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-mat-id');
-        const mat = clayMaterials.find(m => m.id === id);
-        if (mat) {
-          document.querySelectorAll('.material-chip').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          this.viewer.loadTablet(this.viewer.currentText, mat);
         }
       });
     });

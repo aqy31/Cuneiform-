@@ -119,7 +119,7 @@ export class ReaderModal {
           btn.classList.add('active');
           this.currentDataset = ds;
           this.renderDataset(ds);
-          this.viewer.loadTablet(ds, this.viewer.currentClay);
+          this.viewer.selectTextDataset(ds);
         }
       });
     });
@@ -171,11 +171,19 @@ export class ReaderModal {
   open() {
     this.backdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
+    const mobBtn = document.getElementById('mob-reader-btn');
+    if (mobBtn) mobBtn.classList.add('active');
+    const headerBtn = document.getElementById('open-reader-btn');
+    if (headerBtn) headerBtn.classList.add('active');
   }
 
   close() {
     this.backdrop.classList.add('hidden');
     document.body.style.overflow = '';
+    const mobBtn = document.getElementById('mob-reader-btn');
+    if (mobBtn) mobBtn.classList.remove('active');
+    const headerBtn = document.getElementById('open-reader-btn');
+    if (headerBtn) headerBtn.classList.remove('active');
   }
 
   renderDataset(ds) {

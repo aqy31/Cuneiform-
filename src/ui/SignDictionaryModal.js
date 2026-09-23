@@ -52,11 +52,19 @@ export class SignDictionaryModal {
     this.backdrop.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     this.searchInput.focus();
+    const mobBtn = document.getElementById('mob-dict-btn');
+    if (mobBtn) mobBtn.classList.add('active');
+    const headerBtn = document.getElementById('open-dictionary-btn');
+    if (headerBtn) headerBtn.classList.add('active');
   }
 
   close() {
     this.backdrop.classList.add('hidden');
     document.body.style.overflow = '';
+    const mobBtn = document.getElementById('mob-dict-btn');
+    if (mobBtn) mobBtn.classList.remove('active');
+    const headerBtn = document.getElementById('open-dictionary-btn');
+    if (headerBtn) headerBtn.classList.remove('active');
   }
 
   bindEvents() {

@@ -129,12 +129,20 @@ export class DrawingToolbar {
     if (this.painter.modelDimensions) {
       this.updateDimensionsBadge(this.painter.modelDimensions);
     }
+    const mobBtn = document.getElementById('mob-drawing-btn');
+    if (mobBtn) mobBtn.classList.add('active');
+    const headerBtn = document.getElementById('open-drawing-btn');
+    if (headerBtn) headerBtn.classList.add('active');
   }
 
   close() {
     this.isOpen = false;
     this.toolbarEl.classList.add('hidden');
     this.painter.setActive(false);
+    const mobBtn = document.getElementById('mob-drawing-btn');
+    if (mobBtn) mobBtn.classList.remove('active');
+    const headerBtn = document.getElementById('open-drawing-btn');
+    if (headerBtn) headerBtn.classList.remove('active');
   }
 
   bindEvents() {

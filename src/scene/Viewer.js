@@ -100,33 +100,100 @@ export class Viewer {
   initSystems() {
     this.lighting = new LightingSystem(this.scene, this.camera);
     this.builder = new TabletBuilder();
-    this.loadTablet(this.currentText, this.currentClay);
+
+    // تحميل مجسم اللوح المسماري الأثري الأصلي للمستخدم فور فتح الموقع عبر مسارات متعددة
+    this.loadAuthenticUrTablet();
+  }
+
+  showLoadingOverlay(show, text = '🏺 جاري تحميل المجسم ثلاثي الأبعاد...') {
+    let overlay = document.getElementById('cuneiform-loading-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'cuneiform-loading-overlay';
+      overlay.className = 'cuneiform-loading-overlay';
+      this.container.appendChild(overlay);
+    }
+    if (show) {
+      overlay.innerHTML = `
+        <div class="loading-spinner-gem">𒀭</div>
+        <div class="loading-text">${text}</div>
+        <div class="loading-subtext">يرجى الانتظار لبضع ثوانٍ لتحميل المجسم فائق الدقة...</div>
+      `;
+      overlay.style.display = 'flex';
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+
+  loadAuthenticUrTablet(onSuccess, onError) {
+    const candidates = [
+      './models/cuneiform_tablet_ur_iraq.glb',
+      './cuneiform_tablet_ur_iraq.glb',
+      '../models/cuneiform_tablet_ur_iraq.glb',
+      '../cuneiform_tablet_ur_iraq.glb',
+      '/Cuneiform-/docs/models/cuneiform_tablet_ur_iraq.glb',
+      '/Cuneiform-/models/cuneiform_tablet_ur_iraq.glb',
+      '/models/cuneiform_tablet_ur_iraq.glb',
+      'models/cuneiform_tablet_ur_iraq.glb'
+    ];
+    this.currentModelKey = 'ur_tablet';
+    this.showLoadingOverlay(true, '🏺 جاري تحميل مجسم لوح أور المسماري الأصلي...');
+    this.loadGLBWithFallbacks(candidates, (gltf) => {
+      console.log('✅ تم تحميل مجسم لوح أور الأثري بنجاح!');
+      const nameEl = document.getElementById('current-model-name');
+      if (nameEl) nameEl.innerText = 'لوح أور المسماري الأثري الأصلي (العراق)';
+      if (onSuccess) onSuccess(gltf);
+    }, onError);
+  }
+
+  loadCylinderModel(onSuccess, onError) {
+    const candidates = [
+      './models/nebuchadnezzar_cylinder_cuneiform.glb',
+      './nebuchadnezzar_cylinder_cuneiform.glb',
+      '../models/nebuchadnezzar_cylinder_cuneiform.glb',
+      '../nebuchadnezzar_cylinder_cuneiform.glb',
+      '/Cuneiform-/docs/models/nebuchadnezzar_cylinder_cuneiform.glb',
+      '/Cuneiform-/models/nebuchadnezzar_cylinder_cuneiform.glb',
+      '/models/nebuchadnezzar_cylinder_cuneiform.glb',
+      'models/nebuchadnezzar_cylinder_cuneiform.glb'
+    ];
+    this.currentModelKey = 'cylinder';
+    this.showLoadingOverlay(true, '📜 جاري تحميل أسطوانة نبوخذ نصر المسمارية...');
+    this.loadGLBWithFallbacks(candidates, (gltf) => {
+      console.log('✅ تم تحميل أسطوانة نبوخذ نصر بنجاح!');
+      const nameEl = document.getElementById('current-model-name');
+      if (nameEl) nameEl.innerText = 'أسطوانة نبوخذ نصر المسمارية (بابل)';
+      if (onSuccess) onSuccess(gltf);
+    }, onError);
+  }
+
+  selectTextDataset(textData) {
+    this.currentText = textData;
+    // توجيه الكاميرا بسلاسة لواجهة النص دون حذف المجسم ثلاثي الأبعاد الأصلي للمستخدم
+    this.startTransition({
+      tabletRot: new THREE.Euler(0, 0, 0),
+      camPos: new THREE.Vector3(0, 0, 7.2),
+      camTarget: new THREE.Vector3(0, 0, 0),
+      duration: 800
+    });
   }
 
   loadTablet(textData, clayConfig) {
+    // تحديث البيانات الحالية فقط دون مسح مجسم المستخدم الحقيقي
     this.currentText = textData;
     this.currentClay = clayConfig;
-
-    while (this.tabletPivot.children.length > 0) {
-      const child = this.tabletPivot.children[0];
-      this.tabletPivot.remove(child);
-      if (child.geometry) child.geometry.dispose();
-      if (child.material) {
-        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-        else child.material.dispose();
-      }
-    }
-
-    this.tabletMesh = this.builder.createTablet(textData, clayConfig);
-    this.tabletPivot.add(this.tabletMesh);
-    this.tabletPivot.rotation.set(0, 0, 0);
-
-    if (this.isDepthMode) {
-      this.setDepthAnalysisMode(true);
-    }
-
-    if (this.onModelLoaded) {
-      this.onModelLoaded(this.tabletMesh);
+    if (this.tabletMesh) {
+      this.tabletMesh.traverse((child) => {
+        if (child.isMesh && child.material && clayConfig) {
+          if (child.material.color && clayConfig.baseColor) {
+            child.material.color.lerp(new THREE.Color(clayConfig.baseColor), 0.3);
+          }
+          if (child.material.roughness !== undefined && clayConfig.roughness) {
+            child.material.roughness = clayConfig.roughness;
+          }
+          child.material.needsUpdate = true;
+        }
+      });
     }
   }
 
@@ -183,15 +250,46 @@ export class Viewer {
   }
 
   /**
-   * تحميل ملف GLB من رابط (مثل مجلد models/)
+   * تحميل ملف GLB بمحاولات متسلسلة عبر عدة مسارات لتجاوز أي مشاكل استضافة
    */
-  loadGLBFromUrl(url) {
+  loadGLBWithFallbacks(paths, onSuccess, onError) {
+    if (!paths || paths.length === 0) {
+      this.showLoadingOverlay(false);
+      if (onError) onError(new Error("No paths remaining"));
+      return;
+    }
+    const currentPath = paths[0];
+    const remaining = paths.slice(1);
+    
     const loader = new GLTFLoader();
-    loader.load(url, (gltf) => {
-      this.setupCustomMesh(gltf.scene);
-    }, undefined, (error) => {
-      console.warn('Failed to load GLB from URL:', url, error);
-    });
+    loader.load(
+      currentPath,
+      (gltf) => {
+        this.showLoadingOverlay(false);
+        this.setupCustomMesh(gltf.scene);
+        if (onSuccess) onSuccess(gltf);
+      },
+      (xhr) => {
+        if (xhr.total > 0) {
+          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+          this.showLoadingOverlay(true, `🏺 جاري تحميل المجسم الأثري: ${percent}%`);
+        }
+      },
+      (error) => {
+        console.warn(`Could not load GLB from ${currentPath}, trying next candidate...`, error);
+        if (remaining.length > 0) {
+          this.loadGLBWithFallbacks(remaining, onSuccess, onError);
+        } else {
+          this.showLoadingOverlay(false);
+          console.error("All GLB candidate paths failed.", error);
+          if (onError) onError(error);
+        }
+      }
+    );
+  }
+
+  loadGLBFromUrl(url, onSuccess, onError) {
+    this.loadGLBWithFallbacks([url], onSuccess, onError);
   }
 
   loadCustomFile(file) {
@@ -233,12 +331,12 @@ export class Viewer {
     object3D.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
     object3D.traverse((child) => {
-      if (child.isMesh) {
+      if (child.isMesh && child.name !== 'DrawingSurfaceOverlay') {
         child.castShadow = true;
         child.receiveShadow = true;
-        // ضمان تفعيل الخامة المناسبة
         if (child.material) {
-          child.material.roughness = child.material.roughness || 0.8;
+          child.userData.origMaterial = child.material;
+          child.material.roughness = child.material.roughness ?? 0.8;
           child.material.needsUpdate = true;
         }
       }
@@ -342,41 +440,40 @@ export class Viewer {
     this.isBinarized = enabled;
     if (!this.tabletMesh) return;
 
-    if (enabled) {
-      const binarizedMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(0xffffff),
-        roughness: 0.95,
-        metalness: 0.0,
-        normalMap: this.builder.textures.normal,
-        normalScale: new THREE.Vector2(3.5, 3.5),
-        aoMap: this.builder.textures.ao,
-        aoMapIntensity: 2.5
-      });
-      this.tabletMesh.material = binarizedMat;
-    } else {
-      if (this.isDepthMode) {
-        this.setDepthAnalysisMode(true);
-      } else {
-        this.builder.updateClayMaterial(this.currentClay);
+    this.tabletMesh.traverse((child) => {
+      if (child.isMesh && child.name !== 'DrawingSurfaceOverlay') {
+        if (enabled) {
+          if (!child.userData.origMaterial) child.userData.origMaterial = child.material;
+          child.material = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(0xffffff),
+            roughness: 0.95,
+            metalness: 0.0
+          });
+        } else {
+          if (child.userData.origMaterial) {
+            child.material = child.userData.origMaterial;
+          }
+        }
       }
-    }
+    });
   }
 
   setDepthAnalysisMode(enabled) {
     this.isDepthMode = enabled;
     if (!this.tabletMesh) return;
 
-    if (enabled) {
-      if (!this.normalMaterial) {
-        this.normalMaterial = new THREE.MeshNormalMaterial({
-          normalMap: this.builder.textures.normal,
-          normalScale: new THREE.Vector2(2.5, 2.5)
-        });
+    this.tabletMesh.traverse((child) => {
+      if (child.isMesh && child.name !== 'DrawingSurfaceOverlay') {
+        if (enabled) {
+          if (!child.userData.origMaterial) child.userData.origMaterial = child.material;
+          child.material = new THREE.MeshNormalMaterial();
+        } else {
+          if (child.userData.origMaterial) {
+            child.material = child.userData.origMaterial;
+          }
+        }
       }
-      this.tabletMesh.material = this.normalMaterial;
-    } else {
-      this.builder.updateClayMaterial(this.currentClay);
-    }
+    });
   }
 
   takeSnapshot() {
