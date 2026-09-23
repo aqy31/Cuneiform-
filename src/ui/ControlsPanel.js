@@ -71,6 +71,12 @@ export class ControlsPanel {
             <span class="btn-text">استيراد GLB</span>
             <input type="file" id="custom-model-input" accept=".glb,.gltf,.obj" style="display:none;" />
           </label>
+
+          <!-- زر فتح الموقع على الهاتف بالـ QR Code -->
+          <button id="open-phone-qr-btn" class="action-btn highlight-gold desktop-only" title="فتح الموقع على الهاتف مباشرة عبر مسح الرمز بالكميرا">
+            <span class="btn-icon">📱</span>
+            <span class="btn-text">فتح بالهاتف</span>
+          </button>
         </div>
       </header>
 
@@ -272,6 +278,33 @@ export class ControlsPanel {
           <span class="lbl">قلب</span>
         </button>
       </nav>
+
+      <!-- نافذة QR Code لفتح الموقع على الهاتف مباشرة -->
+      <div id="phone-qr-modal" class="reader-backdrop hidden">
+        <div class="reader-modal-container" style="max-width: 440px; height: auto; text-align: center; padding: 22px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="color: var(--gold-primary); font-size: 17px; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>📱</span> فتح الموقع على هاتفك
+            </h3>
+            <button id="close-phone-qr-btn" class="close-btn">✕</button>
+          </div>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;">
+            وجّه كاميرا هاتفك (iPhone أو Android) نحو الرمز أدناه ليفتح الموقع فوراً وبدقة كاملة:
+          </p>
+          <div style="background: #ffffff; padding: 14px; border-radius: 16px; display: inline-block; margin-bottom: 16px; box-shadow: 0 10px 35px rgba(0,0,0,0.6);">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Faqy31.github.io%2FCuneiform-%2F" alt="QR Code" width="220" height="220" style="display: block; border-radius: 8px;" />
+          </div>
+          <div style="background: rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border-gold); margin-bottom: 14px; direction: ltr; font-family: monospace; font-size: 13px; word-break: break-all; color: var(--gold-primary); user-select: all;">
+            https://aqy31.github.io/Cuneiform-/
+          </div>
+          <div style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 10px; padding: 10px; margin-bottom: 16px; font-size: 11px; line-height: 1.5; color: #fbbf24; text-align: right;">
+            💡 <b>سبب عدم الفتح سابقاً في الهاتف:</b> رابط GitHub Pages حساس لحالة الأحرف ويتطلب كتابة حرف <b>C</b> كبيراً وإبقاء علامة <b>-</b> في نهاية الرابط دون حذفها.
+          </div>
+          <button id="copy-qr-link-btn" class="glow-button" style="width: 100%; justify-content: center; padding: 10px 16px;">
+            <span>📋 نسخ الرابط المباشر</span>
+          </button>
+        </div>
+      </div>
     `;
 
     document.getElementById('app').insertAdjacentHTML('beforeend', panelHTML);
@@ -592,6 +625,43 @@ export class ControlsPanel {
     document.getElementById('torch-mode-chk').addEventListener('change', (e) => {
       this.viewer.lighting.setTorchMode(e.target.checked);
     });
+
+    // أحداث نافذة الـ QR Code لفتح الموقع على الهاتف
+    const qrModal = document.getElementById('phone-qr-modal');
+    const openQrBtn = document.getElementById('open-phone-qr-btn');
+    const closeQrBtn = document.getElementById('close-phone-qr-btn');
+    const copyLinkBtn = document.getElementById('copy-qr-link-btn');
+
+    if (openQrBtn && qrModal) {
+      openQrBtn.addEventListener('click', () => {
+        qrModal.classList.remove('hidden');
+      });
+    }
+
+    if (closeQrBtn && qrModal) {
+      closeQrBtn.addEventListener('click', () => {
+        qrModal.classList.add('hidden');
+      });
+    }
+
+    if (qrModal) {
+      qrModal.addEventListener('click', (e) => {
+        if (e.target === qrModal) {
+          qrModal.classList.add('hidden');
+        }
+      });
+    }
+
+    if (copyLinkBtn) {
+      copyLinkBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText('https://aqy31.github.io/Cuneiform-/').then(() => {
+          copyLinkBtn.innerHTML = '<span>✅ تم نسخ الرابط بنجاح!</span>';
+          setTimeout(() => {
+            copyLinkBtn.innerHTML = '<span>📋 نسخ الرابط المباشر</span>';
+          }, 2500);
+        });
+      });
+    }
   }
 
   updateDomeHandle(azimuth, elevation) {

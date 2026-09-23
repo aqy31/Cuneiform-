@@ -27,12 +27,19 @@ export class MeshSurfacePainter {
     this.overlayMeshes = [];
     this.isDrawing = false;
     this.prevUV = null;
+    this.prevPoint = null;
+    this.pointsBuffer = [];
+    this.softness = 0.75; // درجة النعومة الافتراضية للرسم (Softness 75%)
     this.strokeHistory = [];
     this.undoStack = [];
 
     // مؤشر القلم ثلاثي الأبعاد على سطح اللوح (3D Surface Cursor Reticle)
     this.initReticle();
     this.initEvents();
+  }
+
+  setSoftness(softness) {
+    this.softness = Math.max(0, Math.min(1, softness));
   }
 
   /**
@@ -239,6 +246,7 @@ export class MeshSurfacePainter {
         this.isDrawing = false;
         this.prevUV = null;
         this.prevPoint = null;
+        this.pointsBuffer = [];
         this.strokeStartUV = null;
       }
     };
@@ -273,6 +281,177 @@ export class MeshSurfacePainter {
     this.drawingTexture.needsUpdate = true;
   }
 
+  drawSoftSegment(x1, y1, x2, y2) {
+    const baseW = this.lineWidth * 2;
+    if (this.softness > 0.05) {
+      // 1. الهالة الخارجية فائقة النعومة والانسيابية (Outer Soft Velvet Halo)
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.24 * this.softness;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.4 + this.softness * 0.9);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.shadowBlur = baseW * (2.4 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      // 2. الطبقة الوسطية المتدرجة للخط (Mid Velvet Tone)
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.58;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.05 + this.softness * 0.3);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.shadowBlur = baseW * (0.9 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      // 3. لب الخط الانسيابي الناعم (Core Soft Center)
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.92;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.0 - this.softness * 0.22);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    } else {
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+  }
+
+  drawSoftCurve(p0, p1, p2) {
+    const baseW = this.lineWidth * 2;
+    const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+
+    if (this.softness > 0.05) {
+      // 1. الهالة الخارجية فائقة النعومة
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.24 * this.softness;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.4 + this.softness * 0.9);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.shadowBlur = baseW * (2.4 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.moveTo(mid1.x, mid1.y);
+      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      // 2. الطبقة الوسطية المتدرجة
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.58;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.05 + this.softness * 0.3);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.shadowBlur = baseW * (0.9 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.moveTo(mid1.x, mid1.y);
+      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+      this.ctx.stroke();
+      this.ctx.restore();
+
+      // 3. لب الخط الانسيابي الناعم
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 0.92;
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW * (1.0 - this.softness * 0.22);
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(mid1.x, mid1.y);
+      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+      this.ctx.stroke();
+      this.ctx.restore();
+    } else {
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.strokeStyle = this.color;
+      this.ctx.lineWidth = baseW;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(mid1.x, mid1.y);
+      this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+  }
+
+  drawSoftDot(px, py, radius) {
+    if (this.softness > 0.05) {
+      // هالة خارجية ناعمة
+      this.ctx.save();
+      this.ctx.fillStyle = this.color;
+      this.ctx.globalAlpha = 0.24 * this.softness;
+      this.ctx.shadowBlur = radius * (2.4 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.arc(px, py, radius * (1.4 + this.softness * 0.9), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+
+      // طبقة وسطية
+      this.ctx.save();
+      this.ctx.fillStyle = this.color;
+      this.ctx.globalAlpha = 0.58;
+      this.ctx.shadowBlur = radius * (0.9 * this.softness);
+      this.ctx.shadowColor = this.color;
+      this.ctx.beginPath();
+      this.ctx.arc(px, py, radius * (1.05 + this.softness * 0.3), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+
+      // لب النقطة
+      this.ctx.save();
+      this.ctx.fillStyle = this.color;
+      this.ctx.globalAlpha = 0.92;
+      this.ctx.beginPath();
+      this.ctx.arc(px, py, radius * (1.0 - this.softness * 0.22), 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    } else {
+      this.ctx.save();
+      this.ctx.fillStyle = this.color;
+      this.ctx.beginPath();
+      this.ctx.arc(px, py, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
   startStrokeAtUV(uv, worldPoint) {
     this.prevUV = uv.clone();
     this.prevPoint = worldPoint ? worldPoint.clone() : null;
@@ -280,14 +459,10 @@ export class MeshSurfacePainter {
 
     const px = uv.x * this.textureSize;
     const py = (1.0 - uv.y) * this.textureSize;
+    this.pointsBuffer = [{ x: px, y: py }];
 
     if (this.tool === 'pen') {
-      this.ctx.save();
-      this.ctx.fillStyle = this.color;
-      this.ctx.beginPath();
-      this.ctx.arc(px, py, this.lineWidth, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.restore();
+      this.drawSoftDot(px, py, this.lineWidth * 0.9);
       this.drawingTexture.needsUpdate = true;
     } else if (this.tool.startsWith('wedge-')) {
       this.stampWedgeAtUV(this.tool, uv, this.lineWidth * 2.5);
@@ -298,6 +473,9 @@ export class MeshSurfacePainter {
     if (!this.prevUV) {
       this.prevUV = uv.clone();
       this.prevPoint = worldPoint ? worldPoint.clone() : null;
+      const px = uv.x * this.textureSize;
+      const py = (1.0 - uv.y) * this.textureSize;
+      this.pointsBuffer = [{ x: px, y: py }];
       return;
     }
 
@@ -310,10 +488,6 @@ export class MeshSurfacePainter {
     if (uvDist < 0.5) return;
 
     // حماية قاطعة من قفزات الزوايا ودرزات الـ UV (Seam Discontinuity Protection)
-    // إذا كانت المسافة بين نقطتين متتاليتين في الـ UV كبيرة (أكبر من 75 بكسل)
-    // أو إذا كانت المسافة ثلاثية الأبعاد أكبر من 0.35 وحدة:
-    // فهذا يعني قفزة عبر درزة UV أو انزلاق عند زاوية أو حافة اللوح
-    // في هذه الحالة نمنع وصل الخط تماماً ونبدأ مقطعاً جديداً بنقطة ناعمة
     const maxAllowedUVDist = 75;
     let isDiscontinuous = uvDist > maxAllowedUVDist;
 
@@ -327,22 +501,19 @@ export class MeshSurfacePainter {
     if (isDiscontinuous) {
       this.prevUV = uv.clone();
       this.prevPoint = worldPoint ? worldPoint.clone() : null;
+      this.pointsBuffer = [{ x: x2, y: y2 }];
 
       if (this.tool === 'pen') {
-        this.ctx.save();
-        this.ctx.fillStyle = this.color;
-        this.ctx.beginPath();
-        this.ctx.arc(x2, y2, this.lineWidth, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.restore();
+        this.drawSoftDot(x2, y2, this.lineWidth * 0.9);
         this.drawingTexture.needsUpdate = true;
       }
       return;
     }
 
-    this.ctx.save();
+    this.pointsBuffer.push({ x: x2, y: y2 });
 
     if (this.tool === 'eraser') {
+      this.ctx.save();
       this.ctx.globalCompositeOperation = 'destination-out';
       this.ctx.strokeStyle = 'rgba(0,0,0,1)';
       this.ctx.lineWidth = this.lineWidth * 3.5;
@@ -352,19 +523,19 @@ export class MeshSurfacePainter {
       this.ctx.moveTo(x1, y1);
       this.ctx.lineTo(x2, y2);
       this.ctx.stroke();
+      this.ctx.restore();
     } else if (this.tool === 'pen') {
-      this.ctx.globalCompositeOperation = 'source-over';
-      this.ctx.strokeStyle = this.color;
-      this.ctx.lineWidth = this.lineWidth * 2;
-      this.ctx.lineCap = 'round';
-      this.ctx.lineJoin = 'round';
-      this.ctx.beginPath();
-      this.ctx.moveTo(x1, y1);
-      this.ctx.lineTo(x2, y2);
-      this.ctx.stroke();
+      // رسم انسيابي فائق النعومة والـ Softness باستخدام منحنيات بيزيه والتدرج المخملي
+      if (this.pointsBuffer.length >= 3) {
+        const p0 = this.pointsBuffer[this.pointsBuffer.length - 3];
+        const p1 = this.pointsBuffer[this.pointsBuffer.length - 2];
+        const p2 = this.pointsBuffer[this.pointsBuffer.length - 1];
+        this.drawSoftCurve(p0, p1, p2);
+      } else {
+        this.drawSoftSegment(x1, y1, x2, y2);
+      }
     }
 
-    this.ctx.restore();
     this.prevUV = uv.clone();
     this.prevPoint = worldPoint ? worldPoint.clone() : null;
     this.drawingTexture.needsUpdate = true;
@@ -374,42 +545,60 @@ export class MeshSurfacePainter {
     const cx = uv.x * this.textureSize;
     const cy = (1.0 - uv.y) * this.textureSize;
 
+    const renderWedgePath = () => {
+      this.ctx.beginPath();
+      if (wedgeType === 'wedge-h') {
+        const len = size * 3.2;
+        const headW = size * 1.4;
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx + headW * 0.8, cy - headW * 0.5);
+        this.ctx.lineTo(cx + len, cy);
+        this.ctx.lineTo(cx + headW * 0.8, cy + headW * 0.5);
+        this.ctx.closePath();
+      } else if (wedgeType === 'wedge-v') {
+        const len = size * 3.5;
+        const headW = size * 1.4;
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx - headW * 0.5, cy + headW * 0.8);
+        this.ctx.lineTo(cx, cy + len);
+        this.ctx.lineTo(cx + headW * 0.5, cy + headW * 0.8);
+        this.ctx.closePath();
+      } else if (wedgeType === 'wedge-w') {
+        const wSize = size * 2.0;
+        this.ctx.moveTo(cx, cy);
+        this.ctx.lineTo(cx + wSize * 0.8, cy - wSize * 0.4);
+        this.ctx.lineTo(cx + wSize * 0.35, cy + wSize * 0.35);
+        this.ctx.lineTo(cx - wSize * 0.4, cy + wSize * 0.8);
+        this.ctx.closePath();
+      }
+    };
+
+    if (this.softness > 0.05) {
+      // هالة انطباع وتد القصبة على الطين السوفت
+      this.ctx.save();
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.fillStyle = this.color;
+      this.ctx.globalAlpha = 0.3 * this.softness;
+      this.ctx.shadowBlur = size * (1.8 * this.softness);
+      this.ctx.shadowColor = this.color;
+      renderWedgePath();
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+
+    // جسم الوتد المتماسك
     this.ctx.save();
     this.ctx.globalCompositeOperation = 'source-over';
     this.ctx.fillStyle = this.color;
-
-    if (wedgeType === 'wedge-h') {
-      const len = size * 3.2;
-      const headW = size * 1.4;
-      this.ctx.beginPath();
-      this.ctx.moveTo(cx, cy);
-      this.ctx.lineTo(cx + headW * 0.8, cy - headW * 0.5);
-      this.ctx.lineTo(cx + len, cy);
-      this.ctx.lineTo(cx + headW * 0.8, cy + headW * 0.5);
-      this.ctx.closePath();
-      this.ctx.fill();
-    } else if (wedgeType === 'wedge-v') {
-      const len = size * 3.5;
-      const headW = size * 1.4;
-      this.ctx.beginPath();
-      this.ctx.moveTo(cx, cy);
-      this.ctx.lineTo(cx - headW * 0.5, cy + headW * 0.8);
-      this.ctx.lineTo(cx, cy + len); // تصحيح النقطة السفلية لتكون متناسقة مع المركز
-      this.ctx.lineTo(cx + headW * 0.5, cy + headW * 0.8);
-      this.ctx.closePath();
-      this.ctx.fill();
-    } else if (wedgeType === 'wedge-w') {
-      const wSize = size * 2.0;
-      this.ctx.beginPath();
-      this.ctx.moveTo(cx, cy);
-      this.ctx.lineTo(cx + wSize * 0.8, cy - wSize * 0.4);
-      this.ctx.lineTo(cx + wSize * 0.35, cy + wSize * 0.35);
-      this.ctx.lineTo(cx - wSize * 0.4, cy + wSize * 0.8);
-      this.ctx.closePath();
-      this.ctx.fill();
+    this.ctx.globalAlpha = 0.92;
+    if (this.softness > 0.05) {
+      this.ctx.shadowBlur = size * (0.6 * this.softness);
+      this.ctx.shadowColor = this.color;
     }
-
+    renderWedgePath();
+    this.ctx.fill();
     this.ctx.restore();
+
     this.drawingTexture.needsUpdate = true;
   }
 

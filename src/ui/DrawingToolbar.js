@@ -63,11 +63,15 @@ export class DrawingToolbar {
 
           <div class="tb-divider"></div>
 
-          <!-- 3. سمك الخط وشفافية الطبقة -->
+          <!-- 3. سمك ونعومة الخط وشفافية الطبقة -->
           <div class="tb-group sliders-group">
             <div class="tb-slider-item">
               <span class="slider-title">سمك القلم (<span id="line-width-val">6</span>px)</span>
               <input type="range" id="draw-line-width" min="2" max="24" value="6" />
+            </div>
+            <div class="tb-slider-item">
+              <span class="slider-title">✨ نعومة وسوفت الخط (<span id="draw-softness-val">75</span>%)</span>
+              <input type="range" id="draw-softness" min="0" max="100" value="75" step="5" title="التحكم بنعومة وانسيابية حواف الخط والفرشاة" />
             </div>
             <div class="tb-slider-item">
               <span class="slider-title">شفافية الطبقة (<span id="layer-opacity-val">100</span>%)</span>
@@ -174,6 +178,16 @@ export class DrawingToolbar {
       document.getElementById('line-width-val').innerText = val;
       this.painter.setLineWidth(val);
     });
+
+    const softnessSlider = document.getElementById('draw-softness');
+    if (softnessSlider) {
+      softnessSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        const valEl = document.getElementById('draw-softness-val');
+        if (valEl) valEl.innerText = val;
+        this.painter.setSoftness(val / 100);
+      });
+    }
 
     const opacitySlider = document.getElementById('draw-opacity');
     opacitySlider.addEventListener('input', (e) => {
